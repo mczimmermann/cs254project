@@ -154,16 +154,23 @@ int main() // argv: 1 = opcode (in bits)
 {
 	setRegZeroes();
 
+	PC = 0;
 	while (true) {
 		uint32_t instruction;
 
-		std::cout << "> ";
-
 		std::cin >> std::hex >> instruction;
 
+		// "end" in string
 		if(instruction == 0 || quit) {
 			break;
 		}
+
+		iMEM[PC] = instruction;
+		PC++;
+	}
+
+	for (int i = 0; i < PC; i++) {
+		uint32_t instruction = iMEM[i];
 
 		// break up binary code into struct
 		Operation operation = decode(instruction);
@@ -189,5 +196,6 @@ int main() // argv: 1 = opcode (in bits)
 			jump(operation);
 		}
 	}
+
 	return 0;
 }
