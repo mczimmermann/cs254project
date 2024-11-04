@@ -1,4 +1,5 @@
-# cs64_proj
+# cs254_proj
+In order to run this on your local, you can just do `./simulator < test1.txt`
 
 <img width="166" alt="Screen Shot 2023-03-26 at 11 20 28 AM" src="https://user-images.githubusercontent.com/32380357/227795979-d0336835-5fff-42c4-9424-7e50e08e71f4.png">
 
