@@ -1,2 +1,2 @@
 all:
-	g++ mipsEmulator.cpp -o simulator
+	g++ main.c -o simulator
