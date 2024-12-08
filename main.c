@@ -34,6 +34,7 @@ int PC; // program counter
 int REGISTERS[32];
 // int iMEM[16384]; // 2^(16), read-only (ROM)
 int dMEM[16384]; // 2^(16), read/write (RAM)
+bool skip_pc_increment = false;
 // bool quit = false;
 
 // GLOBAL INSTRUCTION DECODE DATA
@@ -248,7 +249,7 @@ int lh_op(){
 }
 
 int lw_op(){
-    std::cout << "LOADING WORD" << " LOC " << REGISTERS[rs1]+imm << " VALUE " << dMEM[REGISTERS[rs1]+imm] << std::endl;
+    std::cout << "LOADING WORD" << " LOC " << REGISTERS[rs1]+imm << " VALUE " << dMEM[REGISTERS[rs1]+imm] <<  " TO RD " << rd << std::endl;
     // rd = M[rs1+imm][0:31]
     REGISTERS[rd] = dMEM[REGISTERS[rs1]+imm];
     return 0;
@@ -289,8 +290,10 @@ int sw_op() {
 /////////////// B Type ///////////////
 
 int beq_op() {
-    if (rs1 == rs2) {
+    if (REGISTERS[rs1] == REGISTERS[rs2]) {
         PC += imm;
+        skip_pc_increment = true;
+        std::cout << "BRANCHING TO PC=" << PC << std::endl;
     } 
     return 0;
 }
@@ -445,8 +448,13 @@ int decode() {
         }
 
     } else if (opcode == 99) { // B type
-        imm = leftShift(getnbits(31, 30, instruction), 12) + leftShift(getnbits(7, 6, instruction), 11);
-        imm += leftShift(getnbits(30, 25, instruction), 5) + leftShift(getnbits(11, 8, instruction), 1);
+        imm = leftShift(getnbits(31, 31, instruction), 12)
+          + leftShift(getnbits(7, 7, instruction), 11)
+          + leftShift(getnbits(30, 25, instruction), 5)
+          + leftShift(getnbits(11, 8, instruction), 1);
+
+        std::cout << "IMM " << imm << " PC = " << PC << std::endl;
+
         rs2 = getnbits(24, 20, instruction);
         rs1 = getnbits(19, 15, instruction);
         funct3 = getnbits(14, 12, instruction);
@@ -517,19 +525,34 @@ int main() {
     // lw x3, 0(x2) = 0x00012183 = 74115
     // ecall = 115
 
-    int instructions[8] = {
-        5275795,
-        6423059,
-        131175,
-        1081523,
-        440467731,
-        1122339,
-        74115,
-        115
+
+    // EXPECTED BEHAVIOR
+    // instruction, decimal
+    // addi x1, x1, 5 = 5275795
+    // addi x2, x2, 5 = 5308691
+    // addi x3, x3, 1 = 1147283
+    // sw x1, 64(x3) = 68263971
+    // lw x4, 64(x3) = 67215875
+    // beq x4, x2, 2 = 69337443
+    // ecall = 115                        // (shouldn't execute)
+    // addi x4, x4, 100 = 104989203
+    // ecall = 115
+    
+    int instructions[9] = {
+      5275795,
+      5308691,
+      1147283,
+      68263971,
+      67215875,
+      2228579,
+      115,
+      104989203,
+      115
     };
 
     PC = 0;
-    while(instructions[PC] != 115) {
+    while(PC < 9 && instructions[PC] != 115) {
+        skip_pc_increment = false;
         instruction = instructions[PC];
 
         opcode = 0;
@@ -553,13 +576,16 @@ int main() {
         std::cout << "PC AFTER " << PC << std::endl;
         std::cout << std::endl;
 
-        PC++;
+        if (!skip_pc_increment) {
+          PC++;
+        }
     }
 
     std::cout << "DONE" << std::endl;
     std::cout << "x1: " << REGISTERS[1] << std::endl;
     std::cout << "x2: " << REGISTERS[2] << std::endl;
     std::cout << "x3: " << REGISTERS[3] << std::endl;
+    std::cout << "x4: " << REGISTERS[4] << std::endl;
 
     // test: add x5, x6, x7
     // int instr_to_decode = 7537331;
