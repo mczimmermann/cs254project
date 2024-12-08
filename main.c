@@ -1,9 +1,33 @@
 #include <iostream>
+#include <cassert>
 
 // TODOS:
 // get multiple instructions working (in a loop over instructions)
 // get lw, sw working
 // speed up bitshift by precomputing powers of 2
+
+// 1 0 0 1
+// if less than 1 0 0 0 0
+//      if less than 0 1 0 0 0
+//    if less th
+
+// calc = [1, 2, ... 2^31]
+
+// 4 bits (signed. can represent -8 to 7)
+// calc = [1, 2, 4, 8]
+// val = 0b1001 = 9
+
+/*
+val_arr[4]  = {0,0,0,0}
+for (int i=3; i>=0; i--) {
+    if (val >= calc[i]):
+        val_arr[i] = 1
+        val -= calc[i]
+}
+*/
+
+
+
 
 // CPU STATE
 int PC; // program counter
@@ -22,43 +46,102 @@ int funct7;
 int rd;
 int instruction;
 
-// CONVENIENCE FUNCTIONS
-//1001 (9), leftshift(9, 3) -> 1001000 (72)
-int leftShift(int x, int n) {
-    // calculates x * 2^n
+// used for bitshifting
+int powersOfTwo[32] = {
+    1, 2, 4, 8, 16, 32, 64, 128, 256,
+    512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
+    262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216,
+    33554432, 67108864, 134217728, 268435456, 536870912, 1073741824,
+    -2147483648
+};
 
-    // Calculate 2^n using repeated addition
-    int power_of_two = 1;
-    for (int i = 0; i < n; ++i) {
-        power_of_two += power_of_two; // Double each time
+// used for bitshifting only
+int bitarrayBuffer[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+int resetBitarrayBuffer() {
+    // bitarrayBuffer = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < 32; i++) {
+        bitarrayBuffer[i] = 0;
     }
-    
-    // Multiply x by 2^n using repeated addition
-    int result = 0;
-    for (int i = 0; i < power_of_two; ++i) {
-        result += x;
-    }
-    
-    return result;
+    return 0;
 }
 
-int rightShift(int x, int n) {
-    // calculates floor(x / 2^n)
+int numToBits(int val) {
+    // populates result in bitarrayBuffer
+    // NOTE: MSB is at index 31 (it's reversed)
+    resetBitarrayBuffer();
+    
+    if (val < 0) {
+        bitarrayBuffer[31] = 1;
+        val += powersOfTwo[31];
+    }
 
-    // Calculate 2^n using repeated addition
-    int power_of_two = 1; // 2^0
-    for (int i = 0; i < n; ++i) {
-        power_of_two += power_of_two; // Double each time
+    for (int i = 30; i >= 0; i--) {
+        if (val >= powersOfTwo[i]) {
+            bitarrayBuffer[i] = 1;
+            val -= powersOfTwo[i];
+        }
+    }
+
+    return 0;
+}
+
+
+int bitsToNum() {
+    int reconstruct = 0;
+    if (bitarrayBuffer[31] == 1) {
+        reconstruct = 0-powersOfTwo[31];
     }
     
-    // Divide x by 2^n using repeated subtraction
-    int quotient = 0;
-    while (x >= power_of_two) {
-        x -= power_of_two;
-        quotient++;
+    for (int i=0; i<31; i++) {
+        if (bitarrayBuffer[i] == 1) {
+            reconstruct += powersOfTwo[i];
+        }
     }
 
-    return quotient;
+    return reconstruct;
+}
+
+// CONVENIENCE FUNCTIONS
+// 1001 (9), leftshift(9, 3) -> 1001000 (72)
+int leftShift(int x, int n) {
+    // NOTE: in bitarrayBuffer, MSB is at index 31 (it's reversed)
+    //       so this implementation looks like a right shift
+    // 1 1 1 1 -> 0 1 1 1  (shift by 1)
+    // 1 1 1 1 -> 0 0 1 1  (shift by 2)
+
+    // TODO this is wrong
+    numToBits(x);
+
+    // first shift the top 31-n bits off, starting from the top
+    for (int i = 31; i >= n; i--) {
+        bitarrayBuffer[i] = bitarrayBuffer[i-n];
+    }
+
+    // then shift in n zeroes at the bottom
+    for (int i = 0; i < n; i++) {
+        bitarrayBuffer[i] = 0;
+    }
+
+    return bitsToNum();
+}
+
+int rightShift(int x, int n) {  // this is a LOGICAL right shift
+    // calculates floor(x / 2^n)
+
+    numToBits(x);  // put the bits of x in an array
+
+    // 1 1 1 1 -> 0 0 1 1  (shift by 2)
+    for (int i = 0; i<32; i++) {
+        if (i+n < 32) {
+            bitarrayBuffer[i] = bitarrayBuffer[i+n];
+        } else {  // shift in zeroes at the top
+            bitarrayBuffer[i] = 0;
+        }
+            
+    }
+
+    return bitsToNum();
 }
 
 
@@ -81,12 +164,14 @@ int getnbits(int msb, int lsb, int bits){
 	// shift left by the leftamt, shift right by rightamt
 
     // TODO: use leftShift and rightShift, don't use uint32_t
-    // bits = leftShift(bits, leftamt);
-	// bits = rightShift(bits, rightamt);
-    uint32_t bitsu = bits;
-    bitsu = bitsu << leftamt;
-	bitsu = bitsu >> rightamt;
-    bits = bitsu;
+    bits = leftShift(bits, leftamt);
+	bits = rightShift(bits, rightamt);
+
+    // implemented using standard c, for testing
+    // uint32_t bitsu = bits;
+    // bitsu = bitsu << leftamt;
+	// bitsu = bitsu >> rightamt;
+    // bits = bitsu;
 
 	// only return bits between start and end of the 32-bit string
 	return bits;
@@ -118,9 +203,7 @@ int sub_op() {
 
 int and_op() { return 0; }
 
-int or_op() { // TODO: fix
-    REGISTERS[rd] = REGISTERS[rs1] || REGISTERS[rs2];
-}
+int or_op() { return 0; }
 
 int sll_op() {
    REGISTERS[rd] = leftShift(REGISTERS[rs1], REGISTERS[rs2]);
@@ -205,15 +288,6 @@ int sw_op() {
 
 /////////////// B Type ///////////////
 
-/*************  ✨ Codeium Command ⭐  *************/
-/**
- * beq_op
- *
- * Branches to PC + imm if rs1 == rs2.
- *
- * @return 0
- */
-/******  1e5c73e0-3f35-427b-abf8-5f268c287494  *******/
 int beq_op() {
     if (rs1 == rs2) {
         PC += imm;
@@ -242,13 +316,9 @@ int bge_op() {
     return 0;
 }
 
-int bltu_op() {
-    return 0;
-}
+int bltu_op() { return 0; }
 
-int bgeu_op() {
-    return 0;
-}
+int bgeu_op() { return 0; }
 
 /////////////// J Type ///////////////
 
@@ -403,6 +473,26 @@ int decode() {
 
     }
 }
+
+/*
+int main(){
+    for (int i = -128; i < 127; i++) {
+        numToBits(i);
+        rightShift(i, 3);
+        int s = i>>3;
+        std::cout << bitsToNum() << "  " << s << std::endl;
+        // assert (bitsToNum() == s);
+
+        
+        std::cout << "array: ";
+        for (int i=0; i<32; i++) {
+            std::cout << bitarrayBuffer[i];
+        }
+        std::cout << std::endl;
+        // std::cout << "i: " << i << " after changing to array and back: " << bitsToNum() << std::endl;
+    }
+}*/
+
 
 int main() {
 

@@ -1,3 +1,5 @@
+// MIPS emulator - written by Kate for CS64
+
 #include <cstdint>
 #include <iostream>
 #include <bitset>
