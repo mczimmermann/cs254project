@@ -1,33 +1,7 @@
+// remove these when working with the Mullifier
+// also remove all cout and assert statements
 #include <iostream>
 #include <cassert>
-
-// TODOS:
-// get multiple instructions working (in a loop over instructions)
-// get lw, sw working
-// speed up bitshift by precomputing powers of 2
-
-// 1 0 0 1
-// if less than 1 0 0 0 0
-//      if less than 0 1 0 0 0
-//    if less th
-
-// calc = [1, 2, ... 2^31]
-
-// 4 bits (signed. can represent -8 to 7)
-// calc = [1, 2, 4, 8]
-// val = 0b1001 = 9
-
-/*
-val_arr[4]  = {0,0,0,0}
-for (int i=3; i>=0; i--) {
-    if (val >= calc[i]):
-        val_arr[i] = 1
-        val -= calc[i]
-}
-*/
-
-
-
 
 // CPU STATE
 int PC; // program counter
@@ -47,7 +21,10 @@ int funct7;
 int rd;
 int instruction;
 
+/////////////// CONVENIENCE FUNCTIONS ///////////////
 // used for bitshifting
+int bitarrayBuffer[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 int powersOfTwo[32] = {
     1, 2, 4, 8, 16, 32, 64, 128, 256,
     512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
@@ -56,11 +33,7 @@ int powersOfTwo[32] = {
     -2147483648
 };
 
-// used for bitshifting only
-int bitarrayBuffer[32] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 int resetBitarrayBuffer() {
-    // bitarrayBuffer = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (int i = 0; i < 32; i++) {
         bitarrayBuffer[i] = 0;
     }
@@ -87,7 +60,6 @@ int numToBits(int val) {
     return 0;
 }
 
-
 int bitsToNum() {
     int reconstruct = 0;
     if (bitarrayBuffer[31] == 1) {
@@ -103,15 +75,9 @@ int bitsToNum() {
     return reconstruct;
 }
 
-// CONVENIENCE FUNCTIONS
-// 1001 (9), leftshift(9, 3) -> 1001000 (72)
 int leftShift(int x, int n) {
-    // NOTE: in bitarrayBuffer, MSB is at index 31 (it's reversed)
-    //       so this implementation looks like a right shift
-    // 1 1 1 1 -> 0 1 1 1  (shift by 1)
-    // 1 1 1 1 -> 0 0 1 1  (shift by 2)
-
-    // TODO this is wrong
+    // in bitarrayBuffer, MSB is at index 31 (it's reversed)
+    // so this implementation looks like a right shift
     numToBits(x);
 
     // first shift the top 31-n bits off, starting from the top
@@ -129,10 +95,8 @@ int leftShift(int x, int n) {
 
 int rightShift(int x, int n) {  // this is a LOGICAL right shift
     // calculates floor(x / 2^n)
+    numToBits(x); // put the bits of x in an array
 
-    numToBits(x);  // put the bits of x in an array
-
-    // 1 1 1 1 -> 0 0 1 1  (shift by 2)
     for (int i = 0; i<32; i++) {
         if (i+n < 32) {
             bitarrayBuffer[i] = bitarrayBuffer[i+n];
@@ -144,7 +108,6 @@ int rightShift(int x, int n) {  // this is a LOGICAL right shift
 
     return bitsToNum();
 }
-
 
 int getnbits(int msb, int lsb, int bits){
     /*
@@ -163,16 +126,8 @@ int getnbits(int msb, int lsb, int bits){
 	int rightamt = lsb + leftamt;
     
 	// shift left by the leftamt, shift right by rightamt
-
-    // TODO: use leftShift and rightShift, don't use uint32_t
     bits = leftShift(bits, leftamt);
 	bits = rightShift(bits, rightamt);
-
-    // implemented using standard c, for testing
-    // uint32_t bitsu = bits;
-    // bitsu = bitsu << leftamt;
-	// bitsu = bitsu >> rightamt;
-    // bits = bitsu;
 
 	// only return bits between start and end of the 32-bit string
 	return bits;
@@ -191,10 +146,9 @@ int bitwiseAnd(int x1, int x2) {
     return result;
 }
 
-// CPU EMULATOR FUNCTIONS
+/////////////// CPU EMULATOR FUNCTIONS ///////////////
 /////////////// R Type ///////////////
 int add_op() {
-    // std::cout  << "Rd: " << REGISTERS[rd];
     REGISTERS[rd] = REGISTERS[rs1] + REGISTERS[rs2];
 }
 
@@ -213,7 +167,6 @@ int sll_op() {
 int srl_op() {
     REGISTERS[rd] = rightShift(REGISTERS[rs1], REGISTERS[rs2]);
 }
-// this is unclear, but I think for signed integers x / 2n is equivalent to shift left arithmetic
 
 int sra_op() {
     REGISTERS[rd] = rightShift(REGISTERS[rs1], REGISTERS[rs2]);
@@ -249,7 +202,6 @@ int lh_op(){
 }
 
 int lw_op(){
-    std::cout << "LOADING WORD" << " LOC " << REGISTERS[rs1]+imm << " VALUE " << dMEM[REGISTERS[rs1]+imm] <<  " TO RD " << rd << std::endl;
     // rd = M[rs1+imm][0:31]
     REGISTERS[rd] = dMEM[REGISTERS[rs1]+imm];
     return 0;
@@ -266,12 +218,8 @@ int sltiu_op() { return 0; }
 int slli_op()  { return 0; }
 
 int jalr_op() {
-    std::cout << "RD =  " << REGISTERS[rd] << std::endl;
-    std::cout << "RS1 = " << REGISTERS[rs1] << std::endl;
-    std::cout << "imm =  " << imm << std::endl;
     REGISTERS[rd] = PC + 4;
     PC = REGISTERS[rs1] + imm;
-    std::cout << "PC AFTER " << PC << std::endl;
     return 0;
 }
 
@@ -281,7 +229,6 @@ int sb_op(){ return 0; }
 int sh_op(){ return 0; }
 
 int sw_op() {
-    std::cout << "STORING WORD " << "VALUE " << REGISTERS[rs2] << " LOC " << REGISTERS[rs1]+imm << " " << std::endl;
     // M[rs1+imm][0:31] = rs2[0:31]
     dMEM[REGISTERS[rs1]+imm] = REGISTERS[rs2];
     return 0;
@@ -293,7 +240,6 @@ int beq_op() {
     if (REGISTERS[rs1] == REGISTERS[rs2]) {
         PC += imm;
         skip_pc_increment = true;
-        std::cout << "BRANCHING TO PC=" << PC << std::endl;
     } 
     return 0;
 }
@@ -327,6 +273,7 @@ int bgeu_op() { return 0; }
 
 /////////////// U Type ///////////////
 
+/////////////// DECODE LOGIC ///////////////
 
 int decode() {
     /*
@@ -334,15 +281,13 @@ int decode() {
     */
 
     // Types: R, I, S, B, U, J
-    // 1. take last opcode (last 6 bits) and determine type
-
+    // take opcode (last 6 bits) and determine type
     // R = 0110011
     // I = 0000011 or 0010011 or 1110011 or 1100111
     // S = 0100011
     // B = 1100011
     // J = 1101111
     // U = 0110111 or 0010111
-
 
     opcode = getnbits(6, 0, instruction);
 
@@ -453,8 +398,6 @@ int decode() {
           + leftShift(getnbits(30, 25, instruction), 5)
           + leftShift(getnbits(11, 8, instruction), 1);
 
-        std::cout << "IMM " << imm << " PC = " << PC << std::endl;
-
         rs2 = getnbits(24, 20, instruction);
         rs1 = getnbits(19, 15, instruction);
         funct3 = getnbits(14, 12, instruction);
@@ -482,62 +425,8 @@ int decode() {
     }
 }
 
-/*
-int main(){
-    for (int i = -128; i < 127; i++) {
-        numToBits(i);
-        rightShift(i, 3);
-        int s = i>>3;
-        std::cout << bitsToNum() << "  " << s << std::endl;
-        // assert (bitsToNum() == s);
-
-        
-        std::cout << "array: ";
-        for (int i=0; i<32; i++) {
-            std::cout << bitarrayBuffer[i];
-        }
-        std::cout << std::endl;
-        // std::cout << "i: " << i << " after changing to array and back: " << bitsToNum() << std::endl;
-    }
-}*/
-
 
 int main() {
-
-    //RISC-V Generator: https://luplab.gitlab.io/rvcodecjs/#q=lw+x3,+0(x2)&abi=false&isa=AUTO
-
-    // EXPECTED BEHAVIOR (x6=5; x5=x6+3; exit)
-    // instruction, decimal
-    // addi x6, x6, 5 = 5440275
-    // addi x5, x6, 3 = 3342995
-    // ecall = 115
-    // int instructions[3] = {5440275, 3342995, 115};
-
-    // EXPECTED BEHAVIOR (x1=10; x2=420; store x1 at addr in x2; load from addr in x2 to x3; exit)
-    //     x3 should be the same as x1
-    // instruction, decimal
-    // addi x1, x1, 5 = 0x00508093 = 5275795
-    // addi x4, x4, 6 = 0x00620213  =  6423059 (loc of exit instruction) TODO: change to work with 4-byte PC
-    // jalr x0, 0(x4) = 0x00020067 = 131175 (SHOULD BE SOMETHING ELSE, dont write to 0)
-    // add x1, x1, x1 = 0x001080b3 = 1081523
-    // addi x2, x2, 420 = 0x1a410113 = 440467731
-    // sw x1, 0(x2) = 0x00112023 = 1122339
-    // lw x3, 0(x2) = 0x00012183 = 74115
-    // ecall = 115
-
-
-    // EXPECTED BEHAVIOR
-    // instruction, decimal
-    // addi x1, x1, 5 = 5275795
-    // addi x2, x2, 5 = 5308691
-    // addi x3, x3, 1 = 1147283
-    // sw x1, 64(x3) = 68263971
-    // lw x4, 64(x3) = 67215875
-    // beq x4, x2, 2 = 69337443
-    // ecall = 115                        // (shouldn't execute)
-    // addi x4, x4, 100 = 104989203
-    // ecall = 115
-    
     int instructions[9] = {
       5275795,
       5308691,
@@ -572,7 +461,7 @@ int main() {
         std::cout << "funct3: " << funct3 << " = " << funct3 << std::endl;
         std::cout << "opcode: " << opcode << " = " << opcode << std::endl;
         std::cout << "imm " << imm << std::endl;
-        std::cout << "RESULT " << REGISTERS[rd] << std::endl; // should give 9
+        std::cout << "RESULT " << REGISTERS[rd] << std::endl;
         std::cout << "PC AFTER " << PC << std::endl;
         std::cout << std::endl;
 
@@ -586,10 +475,4 @@ int main() {
     std::cout << "x2: " << REGISTERS[2] << std::endl;
     std::cout << "x3: " << REGISTERS[3] << std::endl;
     std::cout << "x4: " << REGISTERS[4] << std::endl;
-
-    // test: add x5, x6, x7
-    // int instr_to_decode = 7537331;
-    // decode(instr_to_decode);
-
-    // test: addi x5, x6, 3
 }
