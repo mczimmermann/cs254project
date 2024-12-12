@@ -1,5 +1,9 @@
 # A RISC-V Simulator for the Tensor Processing Unit
 
+Michelle Zimmermann, Kate Unger, Tanay Biradar
+
+Final Project, CS254 (Advanced Computer Architecture) at UC Santa Barbara
+
 ## Abstract
 The rapid adoption of machine learning (ML)—particularly deep learning (DL)—methods over the past 15 years has led to a high demand for custom hardware accelerators. Around 2017, Google released a description of the [Tensor Processing Unit](https://arxiv.org/pdf/1704.04760) (TPU), a proprietary ML accelerator with its own instruction set architecture (ISA) that supports around a dozen instructions. We are interested in running arbitrary C programs on this accelerator, as “there is a tremendous potential to reduce the amount of time and energy required to complete an operation if we are able to broaden the functionality of the accelerators” ([source](https://engineering.ucsb.edu/news/investing-social-impact)). Previous work, a compiler named the Mullifier (credit to Andrew Alex, UCSB ArchLab - citation needed), has been able to compile a subset of C to the TPU instruction set. However, that subset of C is extremely limited. We contribute a new ISA simulator, written in the Mullifier’s supported subset of C, that can read arbitrary RISC-V assembly and simulate its execution. By doing so, our method allows us to run any arbitrary program compiled to RISC-V assembly on OpenTPU.
 
